@@ -62,14 +62,14 @@ export default function HoldingsTable({ holdings, etfCode }: HoldingsTableProps)
               <td
                 className="py-2.5 px-2 font-mono text-xs text-slate-500 cursor-pointer hover:text-sky-600 hover:underline"
                 title={`開啟 ${h.stock_code} Yahoo 財經`}
-                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}`, "_blank")}
+                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}/technical-analysis`, "_blank")}
               >
                 {h.stock_code}
               </td>
               <td
                 className="py-2.5 px-2 font-medium text-slate-800 cursor-pointer hover:text-sky-600 hover:underline"
                 title={`開啟 ${h.stock_name} Yahoo 財經`}
-                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}`, "_blank")}
+                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}/technical-analysis`, "_blank")}
               >
                 {h.stock_name}
               </td>
@@ -95,13 +95,13 @@ export default function HoldingsTable({ holdings, etfCode }: HoldingsTableProps)
             <div key={`out-${etfCode}-${h.stock_code}`} className="flex items-center gap-2 px-2 py-1.5 text-xs text-slate-400">
               <span
                 className="font-mono cursor-pointer hover:text-sky-500 hover:underline"
-                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}`, "_blank")}
+                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}/technical-analysis`, "_blank")}
               >
                 {h.stock_code}
               </span>
               <span
                 className="cursor-pointer hover:text-sky-500 hover:underline"
-                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}`, "_blank")}
+                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}/technical-analysis`, "_blank")}
               >
                 {h.stock_name}
               </span>
