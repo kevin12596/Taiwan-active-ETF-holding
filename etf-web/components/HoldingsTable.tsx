@@ -53,16 +53,34 @@ export default function HoldingsTable({ holdings, etfCode }: HoldingsTableProps)
           {active.map((h) => (
             <tr
               key={`${etfCode}-${h.stock_code}`}
-              className={clsx("border-b border-slate-50 transition-colors hover:bg-slate-50/80 cursor-pointer", getRowStyle(h))}
-              onClick={() => setTrend({ stockCode: h.stock_code, stockName: h.stock_name })}
-              title="點擊查看比重趨勢"
+              className={clsx("border-b border-slate-50 transition-colors hover:bg-slate-50/80", getRowStyle(h))}
             >
               <td className="py-2.5 px-2 text-slate-400 text-xs tabular-nums">
                 <div className="flex items-center gap-1">{h.rank}<OverlapBadge count={h.overlap_count} /></div>
               </td>
-              <td className="py-2.5 px-2 font-mono text-xs text-slate-500">{h.stock_code}</td>
-              <td className="py-2.5 px-2 font-medium text-slate-800">{h.stock_name}</td>
-              <td className="py-2.5 px-2 text-right tabular-nums text-slate-700 font-medium">{h.weight.toFixed(2)}%</td>
+              {/* 代號 & 名稱：點擊開啟 Yahoo 財經個股頁 */}
+              <td
+                className="py-2.5 px-2 font-mono text-xs text-slate-500 cursor-pointer hover:text-sky-600 hover:underline"
+                title={`開啟 ${h.stock_code} Yahoo 財經`}
+                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}`, "_blank")}
+              >
+                {h.stock_code}
+              </td>
+              <td
+                className="py-2.5 px-2 font-medium text-slate-800 cursor-pointer hover:text-sky-600 hover:underline"
+                title={`開啟 ${h.stock_name} Yahoo 財經`}
+                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}`, "_blank")}
+              >
+                {h.stock_name}
+              </td>
+              {/* 比重：點擊彈出趨勢圖 */}
+              <td
+                className="py-2.5 px-2 text-right tabular-nums text-slate-700 font-medium cursor-pointer hover:text-violet-600"
+                title="點擊查看比重趨勢"
+                onClick={() => setTrend({ stockCode: h.stock_code, stockName: h.stock_name })}
+              >
+                {h.weight.toFixed(2)}%
+              </td>
               <td className="py-2.5 px-2 text-right hidden sm:table-cell">
                 <WeightDelta delta={h.weight_delta} isNew={h.is_new} />
               </td>
@@ -75,8 +93,18 @@ export default function HoldingsTable({ holdings, etfCode }: HoldingsTableProps)
           <p className="text-xs font-semibold text-slate-400 px-2 mb-1">本期退出前10</p>
           {exited.map((h) => (
             <div key={`out-${etfCode}-${h.stock_code}`} className="flex items-center gap-2 px-2 py-1.5 text-xs text-slate-400">
-              <span className="font-mono">{h.stock_code}</span>
-              <span>{h.stock_name}</span>
+              <span
+                className="font-mono cursor-pointer hover:text-sky-500 hover:underline"
+                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}`, "_blank")}
+              >
+                {h.stock_code}
+              </span>
+              <span
+                className="cursor-pointer hover:text-sky-500 hover:underline"
+                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}`, "_blank")}
+              >
+                {h.stock_name}
+              </span>
               <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-semibold">OUT</span>
             </div>
           ))}
