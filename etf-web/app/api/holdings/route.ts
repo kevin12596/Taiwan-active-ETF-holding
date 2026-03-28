@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getHoldingsByDate, getPrevHoldingsByDate, getAvailableDates,
-  type Holding, type HoldingWithChange,
+  getHoldingsByDate,
+  getPrevHoldingsForAll,
+  getAvailableDates,
+  getLatestAum,
+  type Holding,
+  type HoldingWithChange,
 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -18,14 +22,12 @@ export async function GET(request: NextRequest) {
       date = dates[0];
     }
 
-    const currentHoldings = await getHoldingsByDate(date);
-
-    const prevHoldingsMap: Record<string, Holding[]> = {};
-    await Promise.all(
-      ETF_CODES.map(async (code) => {
-        prevHoldingsMap[code] = await getPrevHoldingsByDate(date!, code);
-      })
-    );
+    // 並行取得：當期持股、所有前期持股、最新 AUM（3 個並行查詢）
+    const [currentHoldings, prevHoldingsMap, aumMap] = await Promise.all([
+      getHoldingsByDate(date),
+      getPrevHoldingsForAll(date, ETF_CODES),
+      getLatestAum(ETF_CODES),
+    ]);
 
     // 計算每支股票被幾支 ETF 持有
     const stockOverlapCount: Record<string, number> = {};
@@ -45,7 +47,6 @@ export async function GET(request: NextRequest) {
 
       const currentCodes = new Set(current.map((h) => h.stock_code));
 
-      // 退出前10的股票
       const outHoldings: HoldingWithChange[] = prev
         .filter((p) => !currentCodes.has(p.stock_code))
         .map((p) => ({
@@ -58,7 +59,9 @@ export async function GET(request: NextRequest) {
       const withChange: HoldingWithChange[] = current.map((h) => {
         const prevWeight = prevMap[h.stock_code] ?? null;
         const isNew = prev.length > 0 && !prevCodes.has(h.stock_code);
-        const delta = prevWeight !== null ? Math.round((h.weight - prevWeight) * 100) / 100 : null;
+        const delta = prevWeight !== null
+          ? Math.round((h.weight - prevWeight) * 100) / 100
+          : null;
         return {
           ...h, prev_weight: prevWeight, weight_delta: delta,
           is_new: isNew, is_out: false,
@@ -69,7 +72,7 @@ export async function GET(request: NextRequest) {
       result[etfCode] = [...withChange, ...outHoldings];
     }
 
-    return NextResponse.json({ date, holdings: result });
+    return NextResponse.json({ date, holdings: result, aum: aumMap });
   } catch (error) {
     console.error("取得持股資料失敗:", error);
     return NextResponse.json({ error: "取得持股資料失敗" }, { status: 500 });

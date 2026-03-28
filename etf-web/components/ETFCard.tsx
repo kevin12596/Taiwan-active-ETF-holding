@@ -8,9 +8,22 @@ const ETF_INFO: Record<string, { name: string; manager: string; color: string }>
   "00991A": { name: "復華未來50",   manager: "復華投信", color: "from-teal-500 to-teal-600" },
 };
 
-export default function ETFCard({ etfCode, holdings }: { etfCode: string; holdings: HoldingWithChange[] }) {
+interface ETFCardProps {
+  etfCode: string;
+  holdings: HoldingWithChange[];
+  aum: number | null;
+}
+
+function formatAum(aum: number | null): string {
+  if (aum === null) return "—";
+  if (aum >= 100) return `${(aum / 100).toFixed(1)} 百億`;
+  return `${aum.toFixed(0)} 億`;
+}
+
+export default function ETFCard({ etfCode, holdings, aum }: ETFCardProps) {
   const info = ETF_INFO[etfCode] ?? { name: etfCode, manager: "", color: "from-slate-500 to-slate-600" };
-  const totalWeight = holdings.filter((h) => !h.is_out).reduce((s, h) => s + h.weight, 0);
+  const activeHoldings = holdings.filter((h) => !h.is_out);
+  const totalWeight = activeHoldings.reduce((s, h) => s + h.weight, 0);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
@@ -21,9 +34,15 @@ export default function ETFCard({ etfCode, holdings }: { etfCode: string; holdin
             <h2 className="text-white text-lg font-semibold mt-0.5">{info.name}</h2>
             <p className="text-white/60 text-xs mt-0.5">{info.manager}</p>
           </div>
-          <div className="text-right">
-            <p className="text-white/70 text-xs">前10大合計</p>
-            <p className="text-white font-bold text-xl tabular-nums">{totalWeight.toFixed(1)}%</p>
+          <div className="text-right space-y-1">
+            <div>
+              <p className="text-white/70 text-xs">前10大合計</p>
+              <p className="text-white font-bold text-xl tabular-nums">{totalWeight.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-white/70 text-xs">規模（估）</p>
+              <p className="text-white/90 font-semibold text-sm tabular-nums">{formatAum(aum)}</p>
+            </div>
           </div>
         </div>
       </div>

@@ -23,6 +23,11 @@ export interface HoldingWithChange extends Holding {
   overlap_count: number;
 }
 
+export interface EtfMeta {
+  etf_code: string;
+  aum_100m_twd: number | null; // 億元，null 表示尚無資料
+}
+
 export async function getAvailableDates(): Promise<string[]> {
   const db = getDb();
   const rows = await db`
@@ -47,22 +52,50 @@ export async function getHoldingsByDate(date: string): Promise<Holding[]> {
   return rows as Holding[];
 }
 
-export async function getPrevHoldingsByDate(
+// 一次查詢取得所有 ETF 的前期持股（避免 N+1）
+export async function getPrevHoldingsForAll(
   currentDate: string,
-  etfCode: string
-): Promise<Holding[]> {
+  etfCodes: string[]
+): Promise<Record<string, Holding[]>> {
   const db = getDb();
   const rows = await db`
-    SELECT etf_code, stock_code, stock_name,
-           CAST(weight AS FLOAT) AS weight, rank,
-           snapshot_date::text AS snapshot_date
-    FROM etf_holdings
-    WHERE etf_code = ${etfCode}
-      AND snapshot_date = (
-        SELECT MAX(snapshot_date) FROM etf_holdings
-        WHERE etf_code = ${etfCode} AND snapshot_date < ${currentDate}
-      )
-    ORDER BY rank ASC
+    SELECT h.etf_code, h.stock_code, h.stock_name,
+           CAST(h.weight AS FLOAT) AS weight, h.rank,
+           h.snapshot_date::text AS snapshot_date
+    FROM etf_holdings h
+    INNER JOIN (
+      SELECT etf_code, MAX(snapshot_date) AS prev_date
+      FROM etf_holdings
+      WHERE snapshot_date < ${currentDate}
+        AND etf_code = ANY(${etfCodes})
+      GROUP BY etf_code
+    ) latest ON h.etf_code = latest.etf_code
+            AND h.snapshot_date = latest.prev_date
+    ORDER BY h.etf_code, h.rank ASC
   `;
-  return rows as Holding[];
+  const result: Record<string, Holding[]> = {};
+  for (const code of etfCodes) result[code] = [];
+  for (const r of rows) {
+    result[r.etf_code as string].push(r as Holding);
+  }
+  return result;
+}
+
+// 取得最新一期各 ETF 的 AUM
+export async function getLatestAum(
+  etfCodes: string[]
+): Promise<Record<string, number | null>> {
+  const db = getDb();
+  const rows = await db`
+    SELECT DISTINCT ON (etf_code)
+           etf_code,
+           CAST(aum_100m_twd AS FLOAT) AS aum_100m_twd
+    FROM etf_aum
+    WHERE etf_code = ANY(${etfCodes})
+    ORDER BY etf_code, snapshot_date DESC
+  `;
+  const result: Record<string, number | null> = {};
+  for (const code of etfCodes) result[code] = null;
+  for (const r of rows) result[r.etf_code as string] = r.aum_100m_twd as number;
+  return result;
 }
