@@ -24,12 +24,18 @@ export async function GET(request: NextRequest) {
     }
 
     // 並行取得：當期持股、所有前期持股、最新 AUM、產業分布（4 個並行查詢）
-    const [currentHoldings, prevHoldingsMap, aumMap, sectorsMap] = await Promise.all([
+    // sectors 用 Promise.allSettled 避免表尚未建立時拖垮整個 API
+    const [currentHoldings, prevHoldingsMap, aumMap, sectorsResult] = await Promise.all([
       getHoldingsByDate(date),
       getPrevHoldingsForAll(date, ETF_CODES),
       getLatestAum(ETF_CODES),
-      getSectorsByDate(date, ETF_CODES),
+      getSectorsByDate(date, ETF_CODES).catch(() => {
+        const empty: Record<string, { sector_name: string; weight: number }[]> = {};
+        for (const c of ETF_CODES) empty[c] = [];
+        return empty;
+      }),
     ]);
+    const sectorsMap = sectorsResult;
 
     // 計算每支股票被幾支 ETF 持有
     const stockOverlapCount: Record<string, number> = {};
