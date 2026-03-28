@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAvailableDates } from "@/lib/db";
-export const dynamic = "force-dynamic";
+export const revalidate = 3600; // 每小時重新驗證（資料每日 17:00 更新一次）
 export async function GET() {
   try {
     const dates = await getAvailableDates();

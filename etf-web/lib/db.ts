@@ -81,6 +81,66 @@ export async function getPrevHoldingsForAll(
   return result;
 }
 
+// 取得某日各 ETF 的產業分布
+export async function getSectorsByDate(
+  date: string,
+  etfCodes: string[]
+): Promise<Record<string, { sector_name: string; weight: number }[]>> {
+  const db = getDb();
+  const rows = await db`
+    SELECT etf_code, sector_name, CAST(weight AS FLOAT) AS weight
+    FROM etf_sectors
+    WHERE snapshot_date = ${date}
+      AND etf_code = ANY(${etfCodes})
+    ORDER BY etf_code, weight DESC
+  `;
+  const result: Record<string, { sector_name: string; weight: number }[]> = {};
+  for (const code of etfCodes) result[code] = [];
+  for (const r of rows) {
+    result[r.etf_code as string].push({
+      sector_name: r.sector_name as string,
+      weight: r.weight as number,
+    });
+  }
+  return result;
+}
+
+// 取得某支股票在各 ETF 的歷史比重（最近 N 期）
+export async function getStockTrend(
+  stockCode: string,
+  limitDays = 90
+): Promise<{ etf_code: string; snapshot_date: string; weight: number }[]> {
+  const db = getDb();
+  const since = new Date();
+  since.setDate(since.getDate() - limitDays);
+  const sinceStr = since.toISOString().split("T")[0];
+  const rows = await db`
+    SELECT etf_code,
+           snapshot_date::text AS snapshot_date,
+           CAST(weight AS FLOAT) AS weight
+    FROM etf_holdings
+    WHERE stock_code = ${stockCode}
+      AND snapshot_date >= ${sinceStr}
+    ORDER BY etf_code, snapshot_date ASC
+  `;
+  return rows as { etf_code: string; snapshot_date: string; weight: number }[];
+}
+
+// 取得某 ETF 的 AUM 歷史趨勢
+export async function getAumTrend(
+  etfCode: string
+): Promise<{ snapshot_date: string; aum_100m_twd: number }[]> {
+  const db = getDb();
+  const rows = await db`
+    SELECT snapshot_date::text AS snapshot_date,
+           CAST(aum_100m_twd AS FLOAT) AS aum_100m_twd
+    FROM etf_aum
+    WHERE etf_code = ${etfCode}
+    ORDER BY snapshot_date ASC
+  `;
+  return rows as { snapshot_date: string; aum_100m_twd: number }[];
+}
+
 // 取得最新一期各 ETF 的 AUM
 export async function getLatestAum(
   etfCodes: string[]

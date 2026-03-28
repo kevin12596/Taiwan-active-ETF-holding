@@ -4,11 +4,12 @@ import {
   getPrevHoldingsForAll,
   getAvailableDates,
   getLatestAum,
+  getSectorsByDate,
   type Holding,
   type HoldingWithChange,
 } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600; // 每小時重新驗證（資料每日 17:00 更新一次）
 const ETF_CODES = ["00981A", "00980A", "00991A"];
 
 export async function GET(request: NextRequest) {
@@ -22,11 +23,12 @@ export async function GET(request: NextRequest) {
       date = dates[0];
     }
 
-    // 並行取得：當期持股、所有前期持股、最新 AUM（3 個並行查詢）
-    const [currentHoldings, prevHoldingsMap, aumMap] = await Promise.all([
+    // 並行取得：當期持股、所有前期持股、最新 AUM、產業分布（4 個並行查詢）
+    const [currentHoldings, prevHoldingsMap, aumMap, sectorsMap] = await Promise.all([
       getHoldingsByDate(date),
       getPrevHoldingsForAll(date, ETF_CODES),
       getLatestAum(ETF_CODES),
+      getSectorsByDate(date, ETF_CODES),
     ]);
 
     // 計算每支股票被幾支 ETF 持有
@@ -72,7 +74,7 @@ export async function GET(request: NextRequest) {
       result[etfCode] = [...withChange, ...outHoldings];
     }
 
-    return NextResponse.json({ date, holdings: result, aum: aumMap });
+    return NextResponse.json({ date, holdings: result, aum: aumMap, sectors: sectorsMap });
   } catch (error) {
     console.error("取得持股資料失敗:", error);
     return NextResponse.json({ error: "取得持股資料失敗" }, { status: 500 });

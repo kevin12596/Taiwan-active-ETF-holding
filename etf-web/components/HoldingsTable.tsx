@@ -1,6 +1,8 @@
 "use client";
+import { useState } from "react";
 import clsx from "clsx";
 import type { HoldingWithChange } from "@/lib/db";
+import TrendChart from "./TrendChart";
 
 interface HoldingsTableProps { holdings: HoldingWithChange[]; etfCode: string; }
 
@@ -27,8 +29,16 @@ function OverlapBadge({ count }: { count: number }) {
 export default function HoldingsTable({ holdings, etfCode }: HoldingsTableProps) {
   const active = holdings.filter((h) => !h.is_out);
   const exited = holdings.filter((h) => h.is_out);
+  const [trend, setTrend] = useState<{ stockCode: string; stockName: string } | null>(null);
   return (
     <div className="overflow-hidden">
+      {trend && (
+        <TrendChart
+          stockCode={trend.stockCode}
+          stockName={trend.stockName}
+          onClose={() => setTrend(null)}
+        />
+      )}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-100">
@@ -41,8 +51,12 @@ export default function HoldingsTable({ holdings, etfCode }: HoldingsTableProps)
         </thead>
         <tbody>
           {active.map((h) => (
-            <tr key={`${etfCode}-${h.stock_code}`}
-              className={clsx("border-b border-slate-50 transition-colors hover:bg-slate-50/80", getRowStyle(h))}>
+            <tr
+              key={`${etfCode}-${h.stock_code}`}
+              className={clsx("border-b border-slate-50 transition-colors hover:bg-slate-50/80 cursor-pointer", getRowStyle(h))}
+              onClick={() => setTrend({ stockCode: h.stock_code, stockName: h.stock_name })}
+              title="點擊查看比重趨勢"
+            >
               <td className="py-2.5 px-2 text-slate-400 text-xs tabular-nums">
                 <div className="flex items-center gap-1">{h.rank}<OverlapBadge count={h.overlap_count} /></div>
               </td>

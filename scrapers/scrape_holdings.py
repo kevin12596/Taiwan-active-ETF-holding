@@ -4,7 +4,7 @@
 台灣時間每日 17:00 由 GitHub Actions 自動執行
 """
 import os, re, time, logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import psycopg2, requests
 from bs4 import BeautifulSoup
 
@@ -27,10 +27,11 @@ HEADERS = {
 
 def get_snapshot_date() -> date:
     """
-    取得本次快照應記錄的交易日。
+    取得本次快照應記錄的交易日（以台灣時區 UTC+8 為準）。
     若今天是週末（手動觸發），回傳最近的週五。
     """
-    today = date.today()
+    tw_tz = timezone(timedelta(hours=8))
+    today = datetime.now(tw_tz).date()
     weekday = today.weekday()  # 0=週一, 6=週日
     if weekday == 5:   # 週六
         return today - timedelta(days=1)
@@ -100,29 +101,34 @@ def parse_holdings(etf_code: str, soup: BeautifulSoup) -> list[dict]:
     return holdings
 
 
-def parse_aum(etf_code: str, soup: BeautifulSoup) -> float | None:
+def parse_aum_and_sectors(etf_code: str, soup: BeautifulSoup) -> tuple[float | None, list[dict]]:
     """
-    從產業分類表格（stable2）加總各產業投資金額估算 AUM
-    單位：萬元 → 回傳億元
+    從產業分類表格（stable2）解析 AUM 與產業分布
+    格式：[顏色, 產業名稱, 投資金額(萬元), 比例(%)]
+    回傳：(aum_億元, [{sector_name, weight}])
     """
     table = soup.find("table", id=re.compile(r"stable2$"))
     if not table:
-        return None
+        return None, []
     total_10k = 0.0
+    sectors = []
     for row in table.find_all("tr"):
         cells = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
-        # 格式：[顏色, 產業名稱, 投資金額(萬元), 比例(%)]
-        if len(cells) < 3 or not cells[2]:
+        if len(cells) < 4 or not cells[1] or not cells[2]:
             continue
         try:
-            total_10k += float(cells[2].replace(",", ""))
+            amount = float(cells[2].replace(",", ""))
+            weight = float(cells[3].replace(",", "").rstrip("%"))
         except ValueError:
-            pass
-    if total_10k <= 0:
-        return None
-    aum_100m = round(total_10k / 10000, 2)  # 萬元 → 億元
-    logger.info(f"{etf_code} AUM 估算：{aum_100m} 億元")
-    return aum_100m
+            continue
+        if amount <= 0 or weight <= 0:
+            continue
+        total_10k += amount
+        sectors.append({"sector_name": cells[1], "weight": round(weight, 3)})
+    aum_100m = round(total_10k / 10000, 2) if total_10k > 0 else None
+    if aum_100m:
+        logger.info(f"{etf_code} AUM 估算：{aum_100m} 億元，{len(sectors)} 個產業")
+    return aum_100m, sectors
 
 
 def save_holdings(etf_code: str, holdings: list[dict], snapshot_date: date, conn) -> int:
@@ -147,6 +153,19 @@ def save_aum(etf_code: str, aum: float, snapshot_date: date, conn) -> None:
         "INSERT INTO etf_aum (etf_code, aum_100m_twd, snapshot_date) "
         "VALUES (%s,%s,%s) ON CONFLICT (etf_code, snapshot_date) DO NOTHING",
         (etf_code, aum, snapshot_date),
+    )
+    conn.commit()
+    cur.close()
+
+
+def save_sectors(etf_code: str, sectors: list[dict], snapshot_date: date, conn) -> None:
+    if not sectors:
+        return
+    cur = conn.cursor()
+    cur.executemany(
+        "INSERT INTO etf_sectors (etf_code, sector_name, weight, snapshot_date) "
+        "VALUES (%s,%s,%s,%s) ON CONFLICT (etf_code, sector_name, snapshot_date) DO NOTHING",
+        [(etf_code, s["sector_name"], s["weight"], snapshot_date) for s in sectors],
     )
     conn.commit()
     cur.close()
@@ -180,9 +199,11 @@ def main():
             status = f"新增 {inserted} 筆" if inserted > 0 else "已存在，略過"
             logger.info(f"✅ {code} 持股：{status}")
 
-            aum = parse_aum(code, soup)
+            aum, sectors = parse_aum_and_sectors(code, soup)
             if aum:
                 save_aum(code, aum, snapshot_date, conn)
+            if sectors:
+                save_sectors(code, sectors, snapshot_date, conn)
 
             success += 1
 

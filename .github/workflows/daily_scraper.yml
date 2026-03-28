@@ -43,3 +43,17 @@ jobs:
         run: |
           echo "台灣時間：$(TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S')"
           echo "執行結果：${{ job.status }}"
+
+      - name: 失敗時建立 GitHub Issue 通知
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `⚠️ 爬蟲失敗：${today}`,
+              body: `每日 ETF 持股爬蟲執行失敗。\n\n[查看執行記錄](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ["bug"],
+            });

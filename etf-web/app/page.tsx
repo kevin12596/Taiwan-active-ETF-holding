@@ -19,6 +19,9 @@ export default function Home() {
   const [dates, setDates] = useState<string[]>([]);
   const [currentDate, setCurrentDate] = useState<string>("");
   const [holdings, setHoldings] = useState<Record<string, HoldingWithChange[]>>({});
+  const [aum, setAum] = useState<Record<string, number | null>>({});
+  const [sectors, setSectors] = useState<Record<string, { sector_name: string; weight: number }[]>>({});
+  const [lastUpdated, setLastUpdated] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
@@ -39,8 +42,14 @@ export default function Home() {
     fetch(`/api/holdings?date=${date}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.holdings) setHoldings(data.holdings);
-        else setError(data.error ?? "取得資料失敗");
+        if (data.holdings) {
+          setHoldings(data.holdings);
+          if (data.aum) setAum(data.aum);
+          if (data.sectors) setSectors(data.sectors);
+          if (data.date) setLastUpdated(data.date);
+        } else {
+          setError(data.error ?? "取得資料失敗");
+        }
         setLoading(false);
       })
       .catch(() => { setError("無法載入持股資料"); setLoading(false); });
@@ -66,7 +75,10 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-xl font-bold text-slate-900 tracking-tight">台灣主動型 ETF 持股追蹤</h1>
-              <p className="text-xs text-slate-400 mt-0.5">00981A・00980A・00991A 前10大持股比較</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                00981A・00980A・00991A 前10大持股比較
+                {lastUpdated && <span className="ml-2 text-slate-300">・資料日期 {lastUpdated}</span>}
+              </p>
             </div>
             {dates.length > 0 && <DateSelector dates={dates} currentDate={currentDate} onDateChange={setCurrentDate} />}
           </div>
@@ -139,7 +151,7 @@ export default function Home() {
         {!loading && !error && (
           <>
             <div className="hidden md:grid md:grid-cols-3 gap-4">
-              {ETF_CODES.map((code) => <ETFCard key={code} etfCode={code} holdings={holdings[code] ?? []} />)}
+              {ETF_CODES.map((code) => <ETFCard key={code} etfCode={code} holdings={holdings[code] ?? []} aum={aum[code] ?? null} sectors={sectors[code] ?? []} />)}
             </div>
             {/* 行動 Tab */}
             <div className="md:hidden">
@@ -148,7 +160,7 @@ export default function Home() {
                   <MobileTab key={i} active={activeTab === i} label={label} onClick={() => setActiveTab(i)} color={tabColors[i]} />
                 ))}
               </div>
-              <ETFCard etfCode={ETF_CODES[activeTab]} holdings={holdings[ETF_CODES[activeTab]] ?? []} />
+              <ETFCard etfCode={ETF_CODES[activeTab]} holdings={holdings[ETF_CODES[activeTab]] ?? []} aum={aum[ETF_CODES[activeTab]] ?? null} sectors={sectors[ETF_CODES[activeTab]] ?? []} />
             </div>
           </>
         )}

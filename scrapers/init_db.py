@@ -40,6 +40,20 @@ def init_database():
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_etf_aum_etf_date ON etf_aum (etf_code, snapshot_date DESC);")
 
+    # ETF 產業分布資料表
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS etf_sectors (
+            id            SERIAL PRIMARY KEY,
+            etf_code      VARCHAR(10)    NOT NULL,
+            sector_name   VARCHAR(50)    NOT NULL,
+            weight        DECIMAL(6, 3)  NOT NULL,   -- 佔比(%)
+            snapshot_date DATE           NOT NULL,
+            created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            UNIQUE (etf_code, sector_name, snapshot_date)
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_etf_sectors_etf_date ON etf_sectors (etf_code, snapshot_date DESC);")
+
     conn.commit()
     cur.close()
     conn.close()
