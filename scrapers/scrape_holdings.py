@@ -113,10 +113,6 @@ def save_to_db(etf_code: str, holdings: list[dict], snapshot_date: date) -> int:
 
 def main():
     today = date.today()
-    if today.weekday() >= 5:
-        logger.warning(f"{today} 為週末，跳過")
-        return
-
     logger.info(f"=== 開始爬蟲，日期：{today} ===")
     success, failed = 0, []
 
