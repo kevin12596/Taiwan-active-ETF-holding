@@ -23,7 +23,7 @@ HEADERS = {
 def fetch_holdings(etf_code: str) -> list[dict]:
     url = MONEYDJ_URL.format(etf_code=etf_code)
     logger.info(f"抓取 {etf_code}：{url}")
-    html = None
+
     for attempt in range(1, 4):
         try:
             resp = requests.get(url, headers=HEADERS, timeout=30)
@@ -39,56 +39,47 @@ def fetch_holdings(etf_code: str) -> list[dict]:
                 raise RuntimeError(f"無法抓取 {etf_code}") from e
 
     soup = BeautifulSoup(html, "lxml")
-    holdings = []
 
-    # 找包含持股比重資料的 table
-    target_table = None
-    for table in soup.find_all("table"):
-        text = table.get_text()
-        # 持股表格特徵：含有 4 位數股票代號 + 百分比
-        if re.search(r"\d{4}", text) and "%" in text and len(table.find_all("tr")) >= 5:
-            target_table = table
-            break
+    # MoneyDJ 持股表格固定 id: ctl00_ctl00_MainContent_MainContent_stable3
+    # 格式：['名稱(代號.TW)', '比例(%)', '持有股數']
+    table = soup.find("table", id=re.compile(r"stable3$"))
 
-    if not target_table:
-        logger.error(f"找不到 {etf_code} 的持股表格")
-        return []
-
-    rank = 0
-    for row in target_table.find_all("tr"):
-        cells = row.find_all(["td", "th"])
-        if not cells:
-            continue
-        texts = [c.get_text(strip=True) for c in cells]
-
-        stock_code = stock_name = None
-        weight = None
-
-        for i, t in enumerate(texts):
-            # 比對股票代號 (純4~5位數字，或帶.TW後綴)
-            m = re.match(r"^(\d{4,5})(\.TW)?$", t)
-            if m:
-                stock_code = m.group(1)
-                # 下一格是名稱
-                if i + 1 < len(texts) and texts[i + 1]:
-                    stock_name = texts[i + 1]
-                # 找比重 (找 xx.xx% 格式)
-                for t2 in texts:
-                    pm = re.search(r"(\d{1,3}\.\d{1,3})%?$", t2)
-                    if pm:
-                        try:
-                            w = float(pm.group(1))
-                            if 0 < w < 30:  # 合理持股比重
-                                weight = w
-                                break
-                        except ValueError:
-                            pass
+    if not table:
+        # 備用：找 class=datalist 且含 TW 的表格
+        for t in soup.find_all("table", class_="datalist"):
+            if ".TW)" in t.get_text():
+                table = t
                 break
 
-        if stock_code and stock_name and weight is not None:
-            rank += 1
-            holdings.append({"stock_code": stock_code, "stock_name": stock_name, "weight": weight, "rank": rank})
-        if rank >= 10:
+    if not table:
+        logger.error(f"{etf_code}: 找不到持股表格")
+        return []
+
+    holdings = []
+    rows = table.find_all("tr")
+    for row in rows:
+        cells = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
+        if len(cells) < 2:
+            continue
+        # 格式：台積電(2330.TW)
+        m = re.match(r"^(.+)\((\d{4,5})\.TW\)$", cells[0])
+        if not m:
+            continue
+        stock_name = m.group(1)
+        stock_code = m.group(2)
+        try:
+            weight = float(cells[1].replace(",", ""))
+        except (ValueError, IndexError):
+            continue
+        if not (0 < weight < 50):
+            continue
+        holdings.append({
+            "stock_code": stock_code,
+            "stock_name": stock_name,
+            "weight": weight,
+            "rank": len(holdings) + 1,
+        })
+        if len(holdings) >= 10:
             break
 
     logger.info(f"{etf_code} 抓到 {len(holdings)} 筆")
