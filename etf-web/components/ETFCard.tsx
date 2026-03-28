@@ -1,0 +1,37 @@
+"use client";
+import type { HoldingWithChange } from "@/lib/db";
+import HoldingsTable from "./HoldingsTable";
+
+const ETF_INFO: Record<string, { name: string; manager: string; color: string }> = {
+  "00981A": { name: "統一台股增長", manager: "統一投信", color: "from-violet-500 to-violet-600" },
+  "00980A": { name: "野村智慧優選", manager: "野村投信", color: "from-sky-500 to-sky-600" },
+  "00991A": { name: "復華未來50",   manager: "復華投信", color: "from-teal-500 to-teal-600" },
+};
+
+export default function ETFCard({ etfCode, holdings }: { etfCode: string; holdings: HoldingWithChange[] }) {
+  const info = ETF_INFO[etfCode] ?? { name: etfCode, manager: "", color: "from-slate-500 to-slate-600" };
+  const totalWeight = holdings.filter((h) => !h.is_out).reduce((s, h) => s + h.weight, 0);
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+      <div className={`bg-gradient-to-r ${info.color} px-5 py-4`}>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-white/70 text-xs font-medium tracking-wide uppercase">{etfCode}</p>
+            <h2 className="text-white text-lg font-semibold mt-0.5">{info.name}</h2>
+            <p className="text-white/60 text-xs mt-0.5">{info.manager}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-white/70 text-xs">前10大合計</p>
+            <p className="text-white font-bold text-xl tabular-nums">{totalWeight.toFixed(1)}%</p>
+          </div>
+        </div>
+      </div>
+      <div className="flex-1 px-4 py-3">
+        {holdings.length === 0
+          ? <div className="flex items-center justify-center h-32 text-slate-400 text-sm">此日期無資料</div>
+          : <HoldingsTable holdings={holdings} etfCode={etfCode} />}
+      </div>
+    </div>
+  );
+}
