@@ -1,38 +1,40 @@
 """
-探索 TWSE / 公開資訊觀測站 是否有主動型 ETF 的完整每日持股
-主動型 ETF 在台灣有每日完整持股揭露義務
+嘗試 Yahoo Finance 台灣的 ETF 完整持股 API
 """
-import requests, json
-from datetime import date
+import requests, re, json
+from bs4 import BeautifulSoup
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-TODAY = date.today().strftime("%Y%m%d")
-CODES = ["00981A", "00980A", "00991A"]
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "zh-TW,zh;q=0.9",
+}
 
-# 嘗試 TWSE ETF 持股明細 API
-print("=== TWSE ETF 持股查詢 ===")
+CODE = "00981A"
+
+# Yahoo Finance 台灣 ETF 持股頁
 urls_to_try = [
-    f"https://www.twse.com.tw/ETF/etfDiv?response=json&ETFid=00981A&lang=zh",
-    f"https://www.twse.com.tw/ETF/fund/ETFortfolio?response=json&date={TODAY}&stockNo=00981A",
-    f"https://openapi.twse.com.tw/v1/ETF/DailyInfo",
-    f"https://www.twse.com.tw/rwd/zh/ETF/etfPortfolio?date={TODAY}&ETFid=00981A&response=json",
+    f"https://tw.stock.yahoo.com/quote/{CODE}/holding",
+    f"https://finance.yahoo.com/quote/{CODE}.TW/holdings/",
 ]
 
 for url in urls_to_try:
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=10)
-        print(f"\n{url[:80]}")
-        print(f"  status={resp.status_code}, content-type={resp.headers.get('content-type','')[:50]}")
+        resp = requests.get(url, headers=HEADERS, timeout=15)
+        print(f"\n{url}")
+        print(f"  status={resp.status_code}")
         if resp.status_code == 200:
-            try:
-                data = resp.json()
-                print(f"  json keys: {list(data.keys()) if isinstance(data, dict) else f'list[{len(data)}]'}")
-                if isinstance(data, list) and len(data) > 0:
-                    print(f"  first item: {data[0]}")
-                elif isinstance(data, dict):
-                    for k, v in list(data.items())[:3]:
-                        print(f"  {k}: {str(v)[:100]}")
-            except Exception:
-                print(f"  text preview: {resp.text[:200]}")
+            soup = BeautifulSoup(resp.text, "lxml")
+            # 找含有股票代號格式的文字
+            text = soup.get_text()
+            matches = re.findall(r'\d{4,5}(?:\.\w+)?', text)
+            stock_codes = [m for m in matches if re.match(r'^\d{4,5}$', m)]
+            print(f"  可能的股票代號: {stock_codes[:20]}")
+            # 找表格
+            tables = soup.find_all("table")
+            print(f"  tables: {len(tables)}")
+            for t in tables[:2]:
+                rows = t.find_all("tr")
+                print(f"    table rows: {len(rows)}, sample: {rows[0].get_text()[:80] if rows else 'empty'}")
     except Exception as e:
         print(f"  ERROR: {e}")
