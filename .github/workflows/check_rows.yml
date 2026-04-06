@@ -1,24 +1,18 @@
 name: check rows
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/check_rows.yml'
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
+        with:
+          python-version: "3.12"
       - run: pip install requests beautifulsoup4 lxml
-      - run: python - << 'EOF'
-import requests, re
-from bs4 import BeautifulSoup
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-for code in ["00981A", "00980A", "00991A"]:
-    url = f"https://www.moneydj.com/ETF/X/Basic/Basic0007.xdjhtm?etfid={code}.TW"
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.encoding = "utf-8"
-    soup = BeautifulSoup(resp.text, "lxml")
-    table3 = soup.find("table", id=re.compile(r"stable3$"))
-    rows3 = [r for r in table3.find_all("tr") if re.match(r"^(.+)\(\d{4,5}\.TW\)$", (r.find_all(["td","th"])[0].get_text(strip=True) if r.find_all(["td","th"]) else ""))] if table3 else []
-    tables = [(t.get("id",""), len(t.find_all("tr"))) for t in soup.find_all("table") if t.get("id")]
-    print(f"{code}: stable3={len(rows3)} rows, all_tables={tables}")
-EOF
+      - name: check table structure
+        run: |
+          python scrapers/check_rows.py
