@@ -12,27 +12,34 @@ CODES = ["00981A", "00980A", "00991A"]
 today = date.today()
 candidates = [(today - timedelta(days=i)).strftime("%Y%m%d") for i in range(6)]
 
-print("=== T86 API 探索 ===")
+print("=== T86 API 探索（搜尋最近交易日）===")
 for code in CODES:
+    found = False
     for d in candidates:
         url = f"https://www.twse.com.tw/fund/T86?response=json&date={d}&stockNo={code}"
         resp = requests.get(url, headers=HEADERS, timeout=10)
         if resp.status_code != 200:
+            print(f"{code} @ {d}: HTTP {resp.status_code}")
             continue
         try:
             data = resp.json()
-        except Exception:
+        except Exception as e:
+            print(f"{code} @ {d}: JSON parse error {e}")
             continue
-        if data.get("stat") == "OK" or (isinstance(data.get("total"), int) and data["total"] > 0):
-            print(f"\n{code} @ {d}: FOUND!")
-            print(f"  keys: {list(data.keys())}")
+
+        stat = data.get("stat", "")
+        total = data.get("total", 0)
+        print(f"{code} @ {d}: stat={stat!r}, total={total}")
+
+        if "OK" in str(stat) or total > 0:
+            print(f"  FOUND! keys={list(data.keys())}")
             if "fields" in data:
-                print(f"  fields: {data['fields']}")
+                print(f"  fields={data['fields']}")
             if "data" in data:
-                print(f"  data[{len(data['data'])}] rows")
-                print(f"  first row: {data['data'][0]}")
-                print(f"  last  row: {data['data'][-1]}")
+                print(f"  rows={len(data['data'])}")
+                print(f"  first={data['data'][0]}")
+                print(f"  last={data['data'][-1]}")
+            found = True
             break
-        else:
-            print(f"{code} @ {d}: stat={data.get('stat')}, total={data.get('total')}")
-            break  # 只試第一個日期看格式
+    if not found:
+        print(f"{code}: 所有日期均無資料")
