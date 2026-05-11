@@ -63,9 +63,10 @@ def parse_holdings(etf_code: str, soup: BeautifulSoup) -> list[dict]:
     """
     table = soup.find("table", id=re.compile(r"stable3$"))
     if not table:
-        # 備用：找 class=datalist 且含股票代號括號的表格（支援台股 .TW 與海外格式）
+        # 備用：找 class=datalist 且含「代號.交易所)」格式的表格
+        # 支援 .TW / .US / .KS / .HK 等各交易所後綴
         for t in soup.find_all("table", class_="datalist"):
-            if re.search(r"\([A-Z0-9]{1,10}(?:\.TW)?\)", t.get_text()):
+            if re.search(r"\([A-Z0-9]{1,10}\.[A-Z]{2,3}\)", t.get_text()):
                 table = t
                 break
 
@@ -78,13 +79,12 @@ def parse_holdings(etf_code: str, soup: BeautifulSoup) -> list[dict]:
         cells = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
         if len(cells) < 2:
             continue
-        # 格式：台股「台積電(2330.TW)」或海外「輝達(NVDA)」
-        m = re.match(r"^(.+)\(([A-Z0-9]{1,10}(?:\.TW)?)\)$", cells[0])
+        # 格式：台股「台積電(2330.TW)」、美股「Sandisk(SNDK.US)」、韓股「Samsung(009150.KS)」等
+        m = re.match(r"^(.+)\(([A-Z0-9]{1,10})\.([A-Z]{2,3})\)$", cells[0])
         if not m:
             continue
-        raw_code = m.group(2)
-        # 台股去掉 .TW 後綴；海外直接使用代號
-        stock_code = raw_code[:-3] if raw_code.endswith(".TW") else raw_code
+        # 只保留代號，去掉交易所後綴（.TW / .US / .KS ...）
+        stock_code = m.group(2)
         try:
             weight = float(cells[1].replace(",", ""))
         except (ValueError, IndexError):
