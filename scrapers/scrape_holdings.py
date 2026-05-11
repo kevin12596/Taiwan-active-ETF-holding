@@ -140,7 +140,8 @@ def save_holdings(etf_code: str, holdings: list[dict], snapshot_date: date, conn
     for h in holdings:
         cur.execute(
             "INSERT INTO etf_holdings (etf_code,stock_code,stock_name,weight,rank,snapshot_date) "
-            "VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (etf_code,stock_code,snapshot_date) DO NOTHING",
+            "VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (etf_code,stock_code,snapshot_date) "
+            "DO UPDATE SET stock_name=EXCLUDED.stock_name, weight=EXCLUDED.weight, rank=EXCLUDED.rank",
             (etf_code, h["stock_code"], h["stock_name"], h["weight"], h["rank"], snapshot_date),
         )
         if cur.rowcount > 0:

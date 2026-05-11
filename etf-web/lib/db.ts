@@ -39,16 +39,26 @@ export async function getAvailableDates(): Promise<string[]> {
   return rows.map((r) => r.snapshot_date);
 }
 
-export async function getHoldingsByDate(date: string): Promise<Holding[]> {
+export async function getHoldingsByDate(date: string, etfCodes?: string[]): Promise<Holding[]> {
   const db = getDb();
-  const rows = await db`
-    SELECT etf_code, stock_code, stock_name,
-           CAST(weight AS FLOAT) AS weight, rank,
-           snapshot_date::text AS snapshot_date
-    FROM etf_holdings
-    WHERE snapshot_date = ${date}
-    ORDER BY etf_code, rank ASC
-  `;
+  const rows = etfCodes?.length
+    ? await db`
+        SELECT etf_code, stock_code, stock_name,
+               CAST(weight AS FLOAT) AS weight, rank,
+               snapshot_date::text AS snapshot_date
+        FROM etf_holdings
+        WHERE snapshot_date = ${date}
+          AND etf_code = ANY(${etfCodes})
+        ORDER BY etf_code, rank ASC
+      `
+    : await db`
+        SELECT etf_code, stock_code, stock_name,
+               CAST(weight AS FLOAT) AS weight, rank,
+               snapshot_date::text AS snapshot_date
+        FROM etf_holdings
+        WHERE snapshot_date = ${date}
+        ORDER BY etf_code, rank ASC
+      `;
   return rows as Holding[];
 }
 

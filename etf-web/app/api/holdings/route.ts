@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     // 並行取得：當期持股、所有前期持股、最新 AUM、產業分布（4 個並行查詢）
     // sectors 用 Promise.allSettled 避免表尚未建立時拖垮整個 API
     const [currentHoldings, prevHoldingsMap, aumMap, sectorsResult] = await Promise.all([
-      getHoldingsByDate(date),
+      getHoldingsByDate(date, ETF_CODES),
       getPrevHoldingsForAll(date, ETF_CODES),
       getLatestAum(ETF_CODES),
       getSectorsByDate(date, ETF_CODES).catch(() => {
