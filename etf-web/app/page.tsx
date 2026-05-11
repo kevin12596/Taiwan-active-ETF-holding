@@ -4,7 +4,7 @@ import ETFCard from "@/components/ETFCard";
 import DateSelector from "@/components/DateSelector";
 import type { HoldingWithChange } from "@/lib/db";
 
-const ETF_CODES = ["00981A", "00980A", "00991A"];
+const ETF_CODES = ["00981A", "00988A", "00991A"];
 
 function MobileTab({ active, label, onClick, color }: { active: boolean; label: string; onClick: () => void; color: string }) {
   return (
@@ -65,7 +65,7 @@ export default function Home() {
   })();
 
   const tabColors = ["text-violet-600", "text-sky-600", "text-teal-600"];
-  const tabLabels = ["00981A 統一", "00980A 野村", "00991A 復華"];
+  const tabLabels = ["00981A 統一", "00988A 統一全球", "00991A 復華"];
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -76,7 +76,7 @@ export default function Home() {
             <div>
               <h1 className="text-xl font-bold text-slate-900 tracking-tight">台灣主動型 ETF 持股追蹤</h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                00981A・00980A・00991A 前10大持股比較
+                00981A・00988A・00991A 前10大持股比較
                 {lastUpdated && <span className="ml-2 text-slate-300">・資料日期 {lastUpdated}</span>}
               </p>
             </div>

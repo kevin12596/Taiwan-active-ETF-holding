@@ -10,7 +10,7 @@ import {
 } from "@/lib/db";
 
 export const revalidate = 3600; // 每小時重新驗證（資料每日 17:00 更新一次）
-const ETF_CODES = ["00981A", "00980A", "00991A"];
+const ETF_CODES = ["00981A", "00988A", "00991A"];
 
 export async function GET(request: NextRequest) {
   try {

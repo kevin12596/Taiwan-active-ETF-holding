@@ -7,8 +7,8 @@ import AumTrendChart from "./AumTrendChart";
 
 const ETF_INFO: Record<string, { name: string; manager: string; color: string; hexColor: string }> = {
   "00981A": { name: "統一台股增長", manager: "統一投信", color: "from-violet-500 to-violet-600", hexColor: "#7c3aed" },
-  "00980A": { name: "野村智慧優選", manager: "野村投信", color: "from-sky-500 to-sky-600",     hexColor: "#0284c7" },
-  "00991A": { name: "復華未來50",   manager: "復華投信", color: "from-teal-500 to-teal-600",   hexColor: "#0d9488" },
+  "00988A": { name: "統一全球創新", manager: "統一投信", color: "from-orange-500 to-orange-600", hexColor: "#f97316" },
+  "00991A": { name: "復華未來50",   manager: "復華投信", color: "from-teal-500 to-teal-600",    hexColor: "#0d9488" },
 };
 
 interface ETFCardProps {

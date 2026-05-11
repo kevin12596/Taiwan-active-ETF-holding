@@ -15,7 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-ETF_CODES = ["00981A", "00980A", "00991A"]
+ETF_CODES = ["00981A", "00988A", "00991A"]
 MONEYDJ_URL = "https://www.moneydj.com/ETF/X/Basic/Basic0007.xdjhtm?etfid={etf_code}.TW"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -63,9 +63,9 @@ def parse_holdings(etf_code: str, soup: BeautifulSoup) -> list[dict]:
     """
     table = soup.find("table", id=re.compile(r"stable3$"))
     if not table:
-        # 備用：找 class=datalist 且含 .TW) 的表格
+        # 備用：找 class=datalist 且含股票代號括號的表格（支援台股 .TW 與海外格式）
         for t in soup.find_all("table", class_="datalist"):
-            if ".TW)" in t.get_text():
+            if re.search(r"\([A-Z0-9]{1,10}(?:\.TW)?\)", t.get_text()):
                 table = t
                 break
 
@@ -78,10 +78,13 @@ def parse_holdings(etf_code: str, soup: BeautifulSoup) -> list[dict]:
         cells = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
         if len(cells) < 2:
             continue
-        # 格式：台積電(2330.TW)
-        m = re.match(r"^(.+)\((\d{4,5})\.TW\)$", cells[0])
+        # 格式：台股「台積電(2330.TW)」或海外「輝達(NVDA)」
+        m = re.match(r"^(.+)\(([A-Z0-9]{1,10}(?:\.TW)?)\)$", cells[0])
         if not m:
             continue
+        raw_code = m.group(2)
+        # 台股去掉 .TW 後綴；海外直接使用代號
+        stock_code = raw_code[:-3] if raw_code.endswith(".TW") else raw_code
         try:
             weight = float(cells[1].replace(",", ""))
         except (ValueError, IndexError):
@@ -89,7 +92,7 @@ def parse_holdings(etf_code: str, soup: BeautifulSoup) -> list[dict]:
         if not (0 < weight < 50):
             continue
         holdings.append({
-            "stock_code": m.group(2),
+            "stock_code": stock_code,
             "stock_name": m.group(1),
             "weight": weight,
             "rank": len(holdings) + 1,

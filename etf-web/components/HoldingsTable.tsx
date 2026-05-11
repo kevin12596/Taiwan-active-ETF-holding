@@ -6,6 +6,13 @@ import TrendChart from "./TrendChart";
 
 interface HoldingsTableProps { holdings: HoldingWithChange[]; etfCode: string; }
 
+/** 台股（純數字 4-5 碼）→ Yahoo 台灣技術線圖；海外股票 → Yahoo Finance 圖表 */
+function getYahooUrl(stockCode: string): string {
+  return /^\d{4,5}$/.test(stockCode)
+    ? `https://tw.stock.yahoo.com/quote/${stockCode}/technical-analysis`
+    : `https://finance.yahoo.com/chart/${stockCode}`;
+}
+
 function getRowStyle(h: HoldingWithChange) {
   if (h.is_out) return "opacity-40 italic";
   if (h.overlap_count === 3) return "bg-amber-50 border-l-2 border-amber-400";
@@ -61,15 +68,15 @@ export default function HoldingsTable({ holdings, etfCode }: HoldingsTableProps)
               {/* 代號 & 名稱：點擊開啟 Yahoo 財經個股頁 */}
               <td
                 className="py-2.5 px-2 font-mono text-xs text-slate-500 cursor-pointer hover:text-sky-600 hover:underline"
-                title={`開啟 ${h.stock_code} Yahoo 財經`}
-                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}/technical-analysis`, "_blank")}
+                title={`開啟 ${h.stock_code} Yahoo 財經技術線圖`}
+                onClick={() => window.open(getYahooUrl(h.stock_code), "_blank")}
               >
                 {h.stock_code}
               </td>
               <td
                 className="py-2.5 px-2 font-medium text-slate-800 cursor-pointer hover:text-sky-600 hover:underline"
-                title={`開啟 ${h.stock_name} Yahoo 財經`}
-                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}/technical-analysis`, "_blank")}
+                title={`開啟 ${h.stock_name} Yahoo 財經技術線圖`}
+                onClick={() => window.open(getYahooUrl(h.stock_code), "_blank")}
               >
                 {h.stock_name}
               </td>
@@ -95,13 +102,13 @@ export default function HoldingsTable({ holdings, etfCode }: HoldingsTableProps)
             <div key={`out-${etfCode}-${h.stock_code}`} className="flex items-center gap-2 px-2 py-1.5 text-xs text-slate-400">
               <span
                 className="font-mono cursor-pointer hover:text-sky-500 hover:underline"
-                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}/technical-analysis`, "_blank")}
+                onClick={() => window.open(getYahooUrl(h.stock_code), "_blank")}
               >
                 {h.stock_code}
               </span>
               <span
                 className="cursor-pointer hover:text-sky-500 hover:underline"
-                onClick={() => window.open(`https://tw.stock.yahoo.com/quote/${h.stock_code}/technical-analysis`, "_blank")}
+                onClick={() => window.open(getYahooUrl(h.stock_code), "_blank")}
               >
                 {h.stock_name}
               </span>

@@ -15,12 +15,12 @@ interface TrendChartProps {
 
 const ETF_COLORS: Record<string, string> = {
   "00981A": "#7c3aed", // violet
-  "00980A": "#0284c7", // sky
+  "00988A": "#f97316", // orange
   "00991A": "#0d9488", // teal
 };
 const ETF_LABELS: Record<string, string> = {
   "00981A": "統一台股增長",
-  "00980A": "野村智慧優選",
+  "00988A": "統一全球創新",
   "00991A": "復華未來50",
 };
 
